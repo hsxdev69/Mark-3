@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MovieVortex Hero UI</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: #08090B; color: #fff; overflow-x: hidden; height: 100vh; position: relative; }
+
+  /* Ambient Blurred Background */
+  .ambient-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background-size: cover; background-position: center;
+    filter: blur(55px) brightness(0.45);
+    transform: scale(1.2);
+    transition: background-image 0.6s ease;
+  }
+  .ambient-overlay {
+    position: fixed; inset: 0; z-index: 1;
+    background: linear-gradient(180deg, rgba(8,9,11,0.2) 0%, rgba(8,9,11,0.8) 65%, #08090B 100%);
+  }
+
+  /* Main App Container */
+  .screen { position: relative; z-index: 2; height: 100vh; overflow-y: auto; padding-bottom: 110px; transition: opacity 0.35s ease, transform 0.35s ease; }
+  .hidden { opacity: 0; pointer-events: none; position: fixed; inset: 0; transform: scale(0.96); }
+
+  /* Top Category Bar */
+  .tabs { display: flex; gap: 20px; padding: 20px 22px 10px; overflow-x: auto; align-items: baseline; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.45); white-space: nowrap; cursor: pointer; transition: 0.25s; }
+  .tab.active { font-size: 22px; font-weight: 700; color: #fff; }
+
+  /* 3D Stacked Hero Cards */
+  .hero-stage {
+    position: relative; width: 100%; height: 330px;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 10px; overflow: hidden; touch-action: pan-y;
+  }
+  .hero-card {
+    position: absolute; width: 220px; height: 300px;
+    border-radius: 26px; overflow: hidden;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.65);
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease, z-index 0s;
+    cursor: pointer; border: 1px solid rgba(255,255,255,0.12);
+  }
+  .hero-card img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Movie Info */
+  .hero-info { text-align: center; margin-top: 14px; padding: 0 20px; transition: 0.3s ease; }
+  .hero-year { font-size: 13px; color: rgba(255,255,255,0.55); font-weight: 500; }
+  .hero-title { font-size: 24px; font-weight: 700; margin: 2px 0 12px; letter-spacing: 0.3px; }
+  .chips { display: flex; gap: 10px; justify-content: center; align-items: center; }
+  .chip {
+    background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.12);
+    padding: 5px 14px; border-radius: 30px; font-size: 12px; color: rgba(255,255,255,0.85);
+    backdrop-filter: blur(10px);
+  }
+  .chip.rating { display: flex; align-items: center; gap: 5px; font-weight: 600; color: #fff; }
+  .star { color: #FFC107; }
+
+  /* Dots */
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 18px 0 24px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: 0.3s; }
+  .dot.active { width: 8px; height: 8px; background: #fff; transform: scale(1.1); }
+
+  /* For You Section */
+  .section-hdr { display: flex; justify-content: space-between; align-items: center; padding: 0 22px 12px; }
+  .section-hdr h3 { font-size: 18px; font-weight: 600; }
+  .section-hdr span { font-size: 13px; color: rgba(255,255,255,0.5); }
+  .for-you-row { display: flex; gap: 14px; padding: 0 22px; overflow-x: auto; scrollbar-width: none; }
+  .for-you-row::-webkit-scrollbar { display: none; }
+  .fy-card { min-width: 140px; height: 185px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); cursor: pointer; }
+  .fy-card img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Floating Glass Bottom Nav */
+  .bottom-nav {
+    position: fixed; bottom: 20px; left: 24px; right: 24px; height: 62px; z-index: 10;
+    background: rgba(22, 25, 32, 0.82); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 35px;
+    display: flex; justify-content: space-around; align-items: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+  }
+  .nav-icon { font-size: 20px; opacity: 0.45; cursor: pointer; transition: 0.2s; }
+  .nav-icon.active { opacity: 1; }
+
+  /* Detail Screen */
+  .detail-banner { position: relative; width: 100%; height: 330px; border-radius: 0 0 28px 28px; overflow: hidden; }
+  .detail-banner img { width: 100%; height: 100%; object-fit: cover; }
+  .detail-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 40%, #08090B 100%); }
+  .top-actions { position: absolute; top: 18px; left: 18px; right: 18px; display: flex; justify-content: space-between; z-index: 3; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.45); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.15); color: #fff; display: grid; place-items: center; cursor: pointer; }
+  .play-fab {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 3;
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(255,255,255,0.22); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.45); color: #fff; font-size: 24px;
+    display: grid; place-items: center; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  }
+  .detail-body { padding: 16px 22px; }
+  .cast-row { display: flex; gap: 12px; overflow-x: auto; margin-top: 10px; padding-bottom: 6px; scrollbar-width: none; }
+  .cast-card { min-width: 95px; height: 105px; border-radius: 16px; overflow: hidden; background: #161922; position: relative; }
+  .cast-card img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Landscape Player Modal */
+  .player-modal { position: fixed; inset: 0; background: #000; z-index: 99; display: flex; flex-direction: column; justify-content: space-between; padding: 22px; background-size: cover; background-position: center; }
+  .player-bar { display: flex; flex-direction: column; gap: 10px; background: linear-gradient(transparent, rgba(0,0,0,0.85)); padding: 20px; margin: -22px; }
+  .progress { width: 100%; height: 4px; background: rgba(255,255,255,0.3); border-radius: 4px; overflow: hidden; }
+  .progress-fill { width: 55%; height: 100%; background: #fff; }
+</style>
+</head>
+<body>
+
+<div class="ambient-bg" id="ambientBg"></div>
+<div class="ambient-overlay"></div>
+
+<!-- HOME SCREEN -->
+<div class="screen" id="homeScreen">
+  <div class="tabs">
+    <div class="tab active">Trending</div>
+    <div class="tab">New</div>
+    <div class="tab">Movies</div>
+    <div class="tab">Serials</div>
+    <div class="tab">TV shows</div>
+  </div>
+
+  <div class="hero-stage" id="heroStage"></div>
+
+  <div class="hero-info" id="heroInfo">
+    <div class="hero-year" id="mYear">2025</div>
+    <div class="hero-title" id="mTitle">Tron: Ares</div>
+    <div class="chips">
+      <div class="chip" id="mGenre">Cyberpunk</div>
+      <div class="chip" id="mDur">1h 58min</div>
+      <div class="chip rating"><span class="star">★</span> <span id="mRate">7.5</span></div>
+    </div>
+  </div>
+
+  <div class="dots" id="dotsContainer"></div>
+
+  <div class="section-hdr">
+    <h3>For you</h3>
+    <span>See all</span>
+  </div>
+  <div class="for-you-row" id="forYouRow"></div>
+
+  <div class="bottom-nav">
+    <div class="nav-icon active">🏠</div>
+    <div class="nav-icon">🔍</div>
+    <div class="nav-icon">🤍</div>
+    <div class="nav-icon">👤</div>
+  </div>
+</div>
+
+<!-- DETAIL SCREEN -->
+<div class="screen hidden" id="detailScreen">
+  <div class="detail-banner">
+    <img id="dBackdrop" src="" alt="">
+    <div class="top-actions">
+      <div class="icon-btn" onclick="closeDetail()">←</div>
+      <div class="icon-btn">⋮</div>
+    </div>
+    <div class="play-fab" onclick="openPlayer()">▶</div>
+  </div>
+  <div class="detail-body">
+    <div style="font-size:12px; color:rgba(255,255,255,0.5);">Part 1 in the</div>
+    <h1 id="dTitle" style="font-size:24px; margin:2px 0 12px;">Minecraft Movie</h1>
+    <div class="chips" style="justify-content:flex-start; margin-bottom:16px;">
+      <div class="chip" id="dDur">1h 41min</div>
+      <div class="chip" id="dGenre">Fantasy</div>
+      <div class="chip">Movie</div>
+      <div class="chip">6+</div>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <div><span class="star">★</span> <b id="dRate">8.2/10</b> <span style="font-size:12px; color:rgba(255,255,255,0.45);">150K votes</span></div>
+      <div style="font-size:13px; color:rgba(255,255,255,0.7);">👍 15 950 &nbsp; 👎 156</div>
+    </div>
+    <div class="section-hdr" style="padding:0 0 8px;">
+      <h3>Cast</h3><span>See all</span>
+    </div>
+    <div class="cast-row">
+      <div class="cast-card"><img src="https://image.tmdb.org/t/p/w200/6dEFBpZH8C8OijsynkSajQT99Pb.jpg"></div>
+      <div class="cast-card"><img src="https://image.tmdb.org/t/p/w200/rtCx0fiYxJVhzXXdwZE2XRTfIKE.jpg"></div>
+      <div class="cast-card"><img src="https://image.tmdb.org/t/p/w200/2Nti3gYAX513wvhp8IiLL6ZDyOm.jpg"></div>
+    </div>
+    <h3 style="margin:20px 0 8px; font-size:18px;">Synopsis</h3>
+    <p id="dSynopsis" style="font-size:13.5px; color:rgba(255,255,255,0.65); line-height:1.6;"></p>
+  </div>
+</div>
+
+<!-- VIDEO PLAYER SCREEN -->
+<div class="player-modal hidden" id="playerScreen">
+  <div><div class="icon-btn" onclick="closePlayer()">←</div></div>
+  <div class="player-bar">
+    <div style="display:flex; justify-content:space-between; font-size:13px;">
+      <div>⏸ &nbsp; ⏮ &nbsp; ⏭</div>
+      <div>0:55:29 / 1:41:00</div>
+    </div>
+    <div class="progress"><div class="progress-fill"></div></div>
+  </div>
+</div>
+
+<script>
+const movies = [
+  {
+    title: "Tron: Ares", year: "2025", genre: "Cyberpunk", duration: "1h 58min", rating: "7.5",
+    poster: "https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
+    backdrop: "https://image.tmdb.org/t/p/w780/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
+    synopsis: "A highly sophisticated Program, Ares, is sent from the digital world into the real world on a dangerous mission."
+  },
+  {
+    title: "Devil May Cry", year: "2025", genre: "Anime", duration: "8 EP", rating: "7.5",
+    poster: "https://image.tmdb.org/t/p/w500/4YZpsylmjHbqeWzjKpUEF8gcLNW.jpg",
+    backdrop: "https://image.tmdb.org/t/p/w780/4YZpsylmjHbqeWzjKpUEF8gcLNW.jpg",
+    synopsis: "Sinister forces are at play to open the portal between the human and demon realms. In the middle of it all is Dante."
+  },
+  {
+    title: "Minecraft Movie", year: "2025", genre: "Fantasy", duration: "1h 41min", rating: "8.2",
+    poster: "https://image.tmdb.org/t/p/w500/yFHHfHcUgGAxziP1C3lLt0q2T4s.jpg",
+    backdrop: "https://image.tmdb.org/t/p/w780/2Nti3gYAX513wvhp8IiLL6ZDyOm.jpg",
+    synopsis: "Four misfits are suddenly pulled through a mysterious portal into a bizarre, cubic wonderland that thrives on imagination."
+  }
+];
+
+let activeIndex = 0;
+const stage = document.getElementById('heroStage');
+const dotsContainer = document.getElementById('dotsContainer');
+const forYouRow = document.getElementById('forYouRow');
+
+function initUI() {
+  stage.innerHTML = '';
+  dotsContainer.innerHTML = '';
+  forYouRow.innerHTML = '';
+
+  movies.forEach((m, idx) => {
+    // Hero Cards
+    const card = document.createElement('div');
+    card.className = 'hero-card';
+    card.innerHTML = `<img src="${m.poster}" alt="${m.title}">`;
+    card.onclick = () => {
+      if (idx === activeIndex) openDetail(m);
+      else { activeIndex = idx; updateCarousel(); }
+    };
+    stage.appendChild(card);
+
+    // Dots
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dotsContainer.appendChild(dot);
+
+    // For You Row
+    const fy = document.createElement('div');
+    fy.className = 'fy-card';
+    fy.innerHTML = `<img src="${m.poster}" alt="${m.title}">`;
+    fy.onclick = () => openDetail(m);
+    forYouRow.appendChild(fy);
+  });
+
+  updateCarousel();
+}
+
+function updateCarousel() {
+  const cards = document.querySelectorAll('.hero-card');
+  const dots = document.querySelectorAll('.dot');
+
+  cards.forEach((card, i) => {
+    const offset = i - activeIndex;
+    const abs = Math.abs(offset);
+    const scale = Math.max(0.78, 1 - abs * 0.14);
+    const translateX = offset * 62;
+    const translateY = abs * 16;
+    const rotate = offset * 8;
+
+    card.style.zIndex = 10 - abs;
+    card.style.opacity = abs > 2 ? 0 : (1 - abs * 0.3);
+    card.style.transform = `translateX(${translateX}px) translateY(${translateY}px) scale(${scale}) rotate(${rotate}deg)`;
+  });
+
+  dots.forEach((d, i) => d.classList.toggle('active', i === activeIndex));
+
+  const cur = movies[activeIndex];
+  document.getElementById('ambientBg').style.backgroundImage = `url(${cur.poster})`;
+  document.getElementById('mYear').textContent = cur.year;
+  document.getElementById('mTitle').textContent = cur.title;
+  document.getElementById('mGenre').textContent = cur.genre;
+  document.getElementById('mDur').textContent = cur.duration;
+  document.getElementById('mRate').textContent = cur.rating;
+}
+
+// Touch Swipe Support
+let startX = 0;
+stage.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+stage.addEventListener('touchend', e => {
+  const diff = e.changedTouches[0].clientX - startX;
+  if (diff < -40 && activeIndex < movies.length - 1) { activeIndex++; updateCarousel(); }
+  else if (diff > 40 && activeIndex > 0) { activeIndex--; updateCarousel(); }
+});
+
+function openDetail(m) {
+  document.getElementById('dBackdrop').src = m.backdrop;
+  document.getElementById('dTitle').textContent = m.title;
+  document.getElementById('dDur').textContent = m.duration;
+  document.getElementById('dGenre').textContent = m.genre;
+  document.getElementById('dRate').textContent = m.rating + '/10';
+  document.getElementById('dSynopsis').textContent = m.synopsis;
+  document.getElementById('playerScreen').style.backgroundImage = `url(${m.backdrop})`;
+  document.getElementById('homeScreen').classList.add('hidden');
+  document.getElementById('detailScreen').classList.remove('hidden');
+}
+
+function closeDetail() {
+  document.getElementById('detailScreen').classList.add('hidden');
+  document.getElementById('homeScreen').classList.remove('hidden');
+}
+
+function openPlayer() {
+  document.getElementById(' playerScreen');
+  document.getElementById('playerScreen').classList.remove('hidden');
+}
+
+function closePlayer() {
+  document.getElementById('playerScreen').classList.add('hidden');
+}
+
+initUI();
+</script>
+</body>
+</html>

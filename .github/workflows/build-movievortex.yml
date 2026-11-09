@@ -1,0 +1,83 @@
+name: Build MovieVortex APK
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build MovieVortex APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x gradlew
+
+      - name: Build MovieVortex APK
+        run: |
+          ./gradlew assembleStableRelease --stacktrace --no-daemon
+
+      - name: Prepare Direct MovieVortex APK
+        id: prepare_apk
+        run: |
+          echo "Finding generated APKs..."
+          find app/build/outputs/apk/ -name "*.apk" -ls
+          mkdir -p release-output
+          APK_SRC=$(find app/build/outputs/apk/stable/release/ -name "*.apk" | head -n 1)
+          echo "Found source APK: $APK_SRC"
+          cp "$APK_SRC" release-output/MovieVortex.apk
+          echo "Created direct APK:"
+          ls -lh release-output/
+
+      - name: Upload MovieVortex APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MovieVortex-APK
+          path: release-output/MovieVortex.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: v3.0-latest
+          name: "MovieVortex 3.0 (Mark-3 Glassmorphic UI + Zero Splash)"
+          body: |
+            ### MovieVortex 3.0 - Mark-3 Fresh UI Release
+            - **Direct Download**: `MovieVortex.apk` is available directly below without any zip packaging.
+            - **All-New Navigation Bar**: Translucent `#0a0a0d` glassmorphic dock with active illuminated amber-to-rose glowing indicator bar, notification badge, and modern sans-serif typography.
+            - **Zero Splash Screen Delay**: Launches directly into the fresh UI.
+            - **Glassy Carousel Animation & Watch Now Button**: Matching the Dune: Part Two photorealistic design specification.
+            - **4 Dedicated Mark Clusters**: Mark-1 (Anime & Simulcasts), Mark-2 (Western & Hollywood), Mark-3 (Global Trending), Mark-4 (High-Speed Mirror).
+          draft: false
+          prerelease: false
+          files: release-output/MovieVortex.apk
+          overwrite: true
