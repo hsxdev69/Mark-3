@@ -73,15 +73,8 @@ fun MovieVortexSplashScreen(
             )
         }
 
-        // Synchronize with plugin bootstrap: wait until plugins are ready or max 2800ms
-        val startTime = System.currentTimeMillis()
-        while (!com.movievortex.android.core.VortexPluginBootstrap.bootstrapComplete.value && (System.currentTimeMillis() - startTime) < 2800L) {
-            delay(100)
-        }
-        val elapsed = System.currentTimeMillis() - startTime
-        if (elapsed < 1600L) {
-            delay(1600L - elapsed)
-        }
+        // Total splash display duration before seamless transition
+        delay(2200)
         onSplashFinished()
     }
 

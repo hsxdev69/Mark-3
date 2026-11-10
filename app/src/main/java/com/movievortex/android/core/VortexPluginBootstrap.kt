@@ -85,30 +85,16 @@ object VortexPluginBootstrap {
 
             // 3. Ensure each target plugin is loaded in memory
             for (target in TARGET_PLUGINS) {
-                val isAlreadyLoaded = APIHolder.allProviders.any { it.name.equals(target.internalName, ignoreCase = true) } ||
-                        APIHolder.apis.any { it.name.equals(target.internalName, ignoreCase = true) }
+                try {
+                    val isAlreadyLoaded = APIHolder.allProviders.any { it.name.equals(target.internalName, ignoreCase = true) } ||
+                            APIHolder.apis.any { it.name.equals(target.internalName, ignoreCase = true) }
 
-                if (!isAlreadyLoaded) {
-                    val file = PluginManager.getPluginPath(activity, target.internalName, PHISHER_REPO_URL)
-                    if (file.exists()) {
-                        try {
-                            val ok = PluginManager.installPluginFromFile(
-                                context = activity,
-                                sourceFile = file,
-                                internalName = target.internalName,
-                                repositoryUrl = PHISHER_REPO_URL
-                            )
-                            Log.i(TAG, "Loaded disk plugin ${target.name}: success=$ok")
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Failed loading disk plugin ${target.name}: ${e.message}")
-                        }
-                    } else {
-                        // Extract from bundled assets
-                        try {
-                            val assetPath = "plugins/${target.internalName}.cs3"
-                            activity.assets.open(assetPath).use { input ->
-                                val tempFile = java.io.File(activity.cacheDir, "${target.internalName}.tmp.cs3")
-                                tempFile.outputStream().use { output -> input.copyTo(output) }
+                    if (!isAlreadyLoaded) {
+                        val file = PluginManager.getPluginPath(activity, target.internalName, PHISHER_REPO_URL)
+                        if (file.exists() && file.length() > 0) {
+                            try {
+                                val tempFile = java.io.File(activity.cacheDir, "${target.internalName}.reload.tmp.cs3")
+                                file.copyTo(tempFile, overwrite = true)
                                 val ok = PluginManager.installPluginFromFile(
                                     context = activity,
                                     sourceFile = tempFile,
@@ -116,12 +102,33 @@ object VortexPluginBootstrap {
                                     repositoryUrl = PHISHER_REPO_URL
                                 )
                                 tempFile.delete()
-                                Log.i(TAG, "Installed bundled plugin ${target.name}: success=$ok")
+                                Log.i(TAG, "Loaded disk plugin ${target.name}: success=$ok")
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed loading disk plugin ${target.name}: ${e.message}")
                             }
-                        } catch (e: Exception) {
-                            Log.d(TAG, "Bundled asset not found or failed for ${target.name}: ${e.message}")
+                        } else {
+                            // Extract from bundled assets
+                            try {
+                                val assetPath = "plugins/${target.internalName}.cs3"
+                                activity.assets.open(assetPath).use { input ->
+                                    val tempFile = java.io.File(activity.cacheDir, "${target.internalName}.tmp.cs3")
+                                    tempFile.outputStream().use { output -> input.copyTo(output) }
+                                    val ok = PluginManager.installPluginFromFile(
+                                        context = activity,
+                                        sourceFile = tempFile,
+                                        internalName = target.internalName,
+                                        repositoryUrl = PHISHER_REPO_URL
+                                    )
+                                    tempFile.delete()
+                                    Log.i(TAG, "Installed bundled plugin ${target.name}: success=$ok")
+                                }
+                            } catch (e: Exception) {
+                                Log.d(TAG, "Bundled asset not found or failed for ${target.name}: ${e.message}")
+                            }
                         }
                     }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Plugin ${target.name} target check error: ${e.message}")
                 }
             }
 
@@ -134,50 +141,58 @@ object VortexPluginBootstrap {
             }
 
             for (target in TARGET_PLUGINS) {
-                val isLoaded = APIHolder.allProviders.any { it.name.equals(target.internalName, ignoreCase = true) } ||
-                        APIHolder.apis.any { it.name.equals(target.internalName, ignoreCase = true) }
+                try {
+                    val isLoaded = APIHolder.allProviders.any { it.name.equals(target.internalName, ignoreCase = true) } ||
+                            APIHolder.apis.any { it.name.equals(target.internalName, ignoreCase = true) }
 
-                if (!isLoaded) {
-                    Log.i(TAG, "Auto-installing target plugin from online repo: ${target.name}...")
-                    val matchingPlugin = repoPlugins?.firstOrNull {
-                        it.plugin.internalName.equals(target.internalName, ignoreCase = true) ||
-                        it.plugin.name.equals(target.name, ignoreCase = true)
-                    }
+                    if (!isLoaded) {
+                        Log.i(TAG, "Auto-installing target plugin from online repo: ${target.name}...")
+                        val matchingPlugin = repoPlugins?.firstOrNull {
+                            it.plugin.internalName.equals(target.internalName, ignoreCase = true) ||
+                            it.plugin.name.equals(target.name, ignoreCase = true)
+                        }
 
-                    val downloadUrl = matchingPlugin?.plugin?.url ?: target.fallbackUrl
-                    val downloadHash = matchingPlugin?.plugin?.fileHash
+                        val downloadUrl = matchingPlugin?.plugin?.url ?: target.fallbackUrl
+                        val downloadHash = matchingPlugin?.plugin?.fileHash
 
-                    val success = PluginManager.downloadPlugin(
-                        activity = activity,
-                        pluginUrl = downloadUrl,
-                        pluginHash = downloadHash,
-                        internalName = target.internalName,
-                        repositoryUrl = PHISHER_REPO_URL,
-                        loadPlugin = true
-                    )
-
-                    if (success) {
-                        Log.i(TAG, "Successfully installed from web: ${target.name}")
-                    } else {
-                        // Retry with fallback URL without hash restriction
-                        Log.w(TAG, "Direct fallback retry for: ${target.name}...")
-                        PluginManager.downloadPlugin(
+                        val success = PluginManager.downloadPlugin(
                             activity = activity,
-                            pluginUrl = target.fallbackUrl,
-                            pluginHash = null,
+                            pluginUrl = downloadUrl,
+                            pluginHash = downloadHash,
                             internalName = target.internalName,
                             repositoryUrl = PHISHER_REPO_URL,
                             loadPlugin = true
                         )
+
+                        if (success) {
+                            Log.i(TAG, "Successfully installed from web: ${target.name}")
+                        } else {
+                            // Retry with fallback URL without hash restriction
+                            Log.w(TAG, "Direct fallback retry for: ${target.name}...")
+                            PluginManager.downloadPlugin(
+                                activity = activity,
+                                pluginUrl = target.fallbackUrl,
+                                pluginHash = null,
+                                internalName = target.internalName,
+                                repositoryUrl = PHISHER_REPO_URL,
+                                loadPlugin = true
+                            )
+                        }
                     }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Online fetch error for ${target.name}: ${e.message}")
                 }
             }
 
             // Ensure APIHolder.apis has all providers registered
-            APIHolder.allProviders.withLock {
-                if (APIHolder.allProviders.isNotEmpty()) {
-                    APIHolder.apis = APIHolder.allProviders.distinctBy { it.name }
+            try {
+                APIHolder.allProviders.withLock {
+                    if (APIHolder.allProviders.isNotEmpty()) {
+                        APIHolder.apis = APIHolder.allProviders.distinctBy { it.name }
+                    }
                 }
+            } catch (e: Exception) {
+                Log.w(TAG, "API sync warning: ${e.message}")
             }
 
             _bootstrapComplete.value = true
@@ -185,9 +200,13 @@ object VortexPluginBootstrap {
             Log.i(TAG, "VortexPluginBootstrap finished. Active providers: $loadedNames")
 
             // Broadcast plugin load events to trigger UI reload
-            withContext(Dispatchers.Main) {
-                MainActivity.mainPluginsLoadedEvent.invoke(true)
-                MainActivity.afterPluginsLoadedEvent.invoke(true)
+            try {
+                withContext(Dispatchers.Main) {
+                    MainActivity.mainPluginsLoadedEvent.invoke(true)
+                    MainActivity.afterPluginsLoadedEvent.invoke(true)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Plugin event broadcast warning: ${e.message}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error in VortexPluginBootstrap", e)

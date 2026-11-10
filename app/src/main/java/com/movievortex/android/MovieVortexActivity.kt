@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
@@ -19,7 +19,7 @@ import com.movievortex.android.ui.navigation.MovieVortexNavGraph
 import com.movievortex.android.ui.theme.MovieVortexTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
-class MovieVortexActivity : ComponentActivity() {
+class MovieVortexActivity : FragmentActivity() {
 
     private val targetDestination = MutableStateFlow(MainDestination.MoviesTv)
 
