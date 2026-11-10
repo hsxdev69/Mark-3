@@ -219,7 +219,7 @@ fun MovieVortexNavGraph(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Main) }
+    var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Splash) }
     var currentDestination by remember(initialDestination) { mutableStateOf(initialDestination) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var userName by remember { mutableStateOf("Alex Vortex") }
@@ -238,6 +238,9 @@ fun MovieVortexNavGraph(
     // Graceful Back Handling: Prevents unexpected app closure
     BackHandler(enabled = true) {
         when {
+            currentScreen is AppScreen.Splash -> {
+                (context as? android.app.Activity)?.finish()
+            }
             currentScreen !is AppScreen.Main -> {
                 currentScreen = AppScreen.Main
             }

@@ -135,7 +135,7 @@ class HomeController : ViewModel() {
                 val continueWatchingItems = loadContinueWatching()
 
                 // 2. Load Content from Core Providers
-                val apis = APIHolder.apis
+                val apis = if (APIHolder.apis.isNotEmpty()) APIHolder.apis else APIHolder.allProviders
                 val defaultServerName = try {
                     CloudStreamApp.context?.getSharedPreferences("movievortex_settings", Context.MODE_PRIVATE)
                         ?.getString("pref_default_server", ServerManager.DEFAULT_SERVER) ?: ServerManager.DEFAULT_SERVER

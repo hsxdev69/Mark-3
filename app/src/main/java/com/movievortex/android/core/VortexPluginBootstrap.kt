@@ -83,38 +83,49 @@ object VortexPluginBootstrap {
                 Log.w(TAG, "Initial plugin load warning: ${e.message}")
             }
 
-            // 3. Ensure each target plugin is available, installing from bundled assets if needed
-            var installedAny = false
+            // 3. Ensure each target plugin is loaded in memory
             for (target in TARGET_PLUGINS) {
-                val file = PluginManager.getPluginPath(activity, target.internalName, PHISHER_REPO_URL)
-                var isInstalled = file.exists()
+                val isAlreadyLoaded = APIHolder.allProviders.any { it.name.equals(target.internalName, ignoreCase = true) } ||
+                        APIHolder.apis.any { it.name.equals(target.internalName, ignoreCase = true) }
 
-                if (!isInstalled) {
-                    try {
-                        val assetPath = "plugins/${target.internalName}.cs3"
-                        activity.assets.open(assetPath).use { input ->
-                            val tempFile = java.io.File(activity.cacheDir, "${target.internalName}.tmp.cs3")
-                            tempFile.outputStream().use { output -> input.copyTo(output) }
+                if (!isAlreadyLoaded) {
+                    val file = PluginManager.getPluginPath(activity, target.internalName, PHISHER_REPO_URL)
+                    if (file.exists()) {
+                        try {
                             val ok = PluginManager.installPluginFromFile(
                                 context = activity,
-                                sourceFile = tempFile,
+                                sourceFile = file,
                                 internalName = target.internalName,
                                 repositoryUrl = PHISHER_REPO_URL
                             )
-                            tempFile.delete()
-                            if (ok) {
-                                isInstalled = true
-                                installedAny = true
-                                Log.i(TAG, "Successfully installed bundled plugin: ${target.name}")
-                            }
+                            Log.i(TAG, "Loaded disk plugin ${target.name}: success=$ok")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed loading disk plugin ${target.name}: ${e.message}")
                         }
-                    } catch (e: Exception) {
-                        Log.d(TAG, "Bundled asset not found or failed for ${target.name}: ${e.message}")
+                    } else {
+                        // Extract from bundled assets
+                        try {
+                            val assetPath = "plugins/${target.internalName}.cs3"
+                            activity.assets.open(assetPath).use { input ->
+                                val tempFile = java.io.File(activity.cacheDir, "${target.internalName}.tmp.cs3")
+                                tempFile.outputStream().use { output -> input.copyTo(output) }
+                                val ok = PluginManager.installPluginFromFile(
+                                    context = activity,
+                                    sourceFile = tempFile,
+                                    internalName = target.internalName,
+                                    repositoryUrl = PHISHER_REPO_URL
+                                )
+                                tempFile.delete()
+                                Log.i(TAG, "Installed bundled plugin ${target.name}: success=$ok")
+                            }
+                        } catch (e: Exception) {
+                            Log.d(TAG, "Bundled asset not found or failed for ${target.name}: ${e.message}")
+                        }
                     }
                 }
             }
 
-            // 4. Query online repository manifest to fetch missing or updated plugins
+            // 4. Query online repository manifest to fetch missing plugins if still not loaded
             val repoPlugins = try {
                 RepositoryManager.getRepoPlugins(repoData)
             } catch (e: Exception) {
@@ -123,10 +134,10 @@ object VortexPluginBootstrap {
             }
 
             for (target in TARGET_PLUGINS) {
-                val file = PluginManager.getPluginPath(activity, target.internalName, PHISHER_REPO_URL)
-                val isInstalled = file.exists()
+                val isLoaded = APIHolder.allProviders.any { it.name.equals(target.internalName, ignoreCase = true) } ||
+                        APIHolder.apis.any { it.name.equals(target.internalName, ignoreCase = true) }
 
-                if (!isInstalled) {
+                if (!isLoaded) {
                     Log.i(TAG, "Auto-installing target plugin from online repo: ${target.name}...")
                     val matchingPlugin = repoPlugins?.firstOrNull {
                         it.plugin.internalName.equals(target.internalName, ignoreCase = true) ||
@@ -146,12 +157,11 @@ object VortexPluginBootstrap {
                     )
 
                     if (success) {
-                        installedAny = true
                         Log.i(TAG, "Successfully installed from web: ${target.name}")
                     } else {
                         // Retry with fallback URL without hash restriction
                         Log.w(TAG, "Direct fallback retry for: ${target.name}...")
-                        val fallbackSuccess = PluginManager.downloadPlugin(
+                        PluginManager.downloadPlugin(
                             activity = activity,
                             pluginUrl = target.fallbackUrl,
                             pluginHash = null,
@@ -159,15 +169,14 @@ object VortexPluginBootstrap {
                             repositoryUrl = PHISHER_REPO_URL,
                             loadPlugin = true
                         )
-                        if (fallbackSuccess) {
-                            installedAny = true
-                            Log.i(TAG, "Fallback installed: ${target.name}")
-                        } else {
-                            Log.e(TAG, "Failed to install plugin: ${target.name}")
-                        }
                     }
-                } else {
-                    Log.i(TAG, "Plugin ${target.name} is verified on disk.")
+                }
+            }
+
+            // Ensure APIHolder.apis has all providers registered
+            APIHolder.allProviders.withLock {
+                if (APIHolder.allProviders.isNotEmpty()) {
+                    APIHolder.apis = APIHolder.allProviders.distinctBy { it.name }
                 }
             }
 
