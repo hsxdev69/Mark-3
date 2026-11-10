@@ -1,5 +1,6 @@
 package com.movievortex.android.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -233,6 +234,21 @@ fun MovieVortexNavGraph(
     }
 
     val downloadState by downloadController.uiState.collectAsState()
+
+    // Graceful Back Handling: Prevents unexpected app closure
+    BackHandler(enabled = true) {
+        when {
+            currentScreen !is AppScreen.Main -> {
+                currentScreen = AppScreen.Main
+            }
+            currentDestination != MainDestination.Home -> {
+                currentDestination = MainDestination.Home
+            }
+            else -> {
+                (context as? android.app.Activity)?.finish()
+            }
+        }
+    }
 
     AnimatedContent(
         targetState = currentScreen,

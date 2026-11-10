@@ -110,6 +110,12 @@ fun HomeScreen(
         if (pool.isNotEmpty()) pool.take(10) else emptyList()
     }
 
+    // If everything is completely empty while initial cold loading, show shimmering skeleton
+    if (heroList.isEmpty() && state.rows.isEmpty() && state.isLoading) {
+        HomeScreenSkeleton(modifier = modifier)
+        return
+    }
+
     LazyColumn(
         state = scrollState,
         modifier = modifier

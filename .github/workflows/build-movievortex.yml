@@ -42,7 +42,12 @@ jobs:
 
       - name: Build MovieVortex APK
         run: |
-          ./gradlew assembleStableRelease --stacktrace --no-daemon
+          for i in 1 2 3; do
+            ./gradlew assembleStableRelease --stacktrace --no-daemon && break || {
+              echo "Build attempt $i failed. Retrying in 10s..."
+              sleep 10
+            }
+          done
 
       - name: Prepare Direct MovieVortex APK
         id: prepare_apk

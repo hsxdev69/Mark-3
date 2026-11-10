@@ -43,10 +43,50 @@ data class HomeUiState(
 
 class HomeController : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-
-    private var explorePage = 1
+    private val seedHeroMedia = listOf(
+        MovieVortexMedia(
+            id = "dune-part-two",
+            title = "Dune: Part Two",
+            poster = "https://image.tmdb.org/t/p/w780/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
+            backdrop = "https://image.tmdb.org/t/p/w1280/eZ239CUp1d6OryZEBPnO2n87gMG.jpg",
+            type = MediaType.Movie,
+            year = 2024,
+            rating = 8.8f,
+            runtime = 166,
+            synopsis = "Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.",
+            genres = listOf("Sci-Fi", "Adventure"),
+            providerApiName = "SuperStream",
+            rawUrl = "https://www.themoviedb.org/movie/693134-dune-part-two"
+        ),
+        MovieVortexMedia(
+            id = "oppenheimer-2023",
+            title = "Oppenheimer",
+            poster = "https://image.tmdb.org/t/p/w780/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+            backdrop = "https://image.tmdb.org/t/p/w1280/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+            type = MediaType.Movie,
+            year = 2023,
+            rating = 8.9f,
+            runtime = 180,
+            synopsis = "The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb.",
+            genres = listOf("Drama", "History"),
+            providerApiName = "SuperStream",
+            rawUrl = "https://www.themoviedb.org/movie/872585-oppenheimer"
+        ),
+        MovieVortexMedia(
+            id = "interstellar-2014",
+            title = "Interstellar",
+            poster = "https://image.tmdb.org/t/p/w780/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
+            backdrop = "https://image.tmdb.org/t/p/w1280/xJHokMbljvjADYdit5fK5VQsXEG.jpg",
+            type = MediaType.Movie,
+            year = 2014,
+            rating = 8.7f,
+            runtime = 169,
+            synopsis = "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.",
+            genres = listOf("Sci-Fi", "Drama"),
+            providerApiName = "SuperStream",
+            rawUrl = "https://www.themoviedb.org/movie/157336-interstellar"
+        )
+    )
 
     val defaultPlatforms = listOf(
         StreamingPlatform("netflix", "Netflix", "ic_netflix", 0xFFE50914, "Streaming giant"),
@@ -58,10 +98,28 @@ class HomeController : ViewModel() {
         StreamingPlatform("hulu", "Hulu", "ic_hulu", 0xFF1CE783, "Hit movies and TV series")
     )
 
+    private val _uiState = MutableStateFlow(
+        HomeUiState(
+            isLoading = true,
+            heroItems = seedHeroMedia,
+            platforms = defaultPlatforms
+        )
+    )
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private var explorePage = 1
+
     init {
         loadHomeContent()
         MainActivity.mainPluginsLoadedEvent += ::onPluginsLoaded
         MainActivity.afterPluginsLoadedEvent += ::onPluginsLoaded
+        viewModelScope.launch {
+            com.movievortex.android.core.VortexPluginBootstrap.bootstrapComplete.collect { complete ->
+                if (complete) {
+                    loadHomeContent(forceReload = true)
+                }
+            }
+        }
     }
 
     private fun onPluginsLoaded(success: Boolean) {
@@ -124,6 +182,8 @@ class HomeController : ViewModel() {
                 val allUniqueMedia = rows.flatMap { it.items }.distinctBy { it.rawUrl.ifBlank { it.title.trim().lowercase() } }
                 if (allUniqueMedia.isNotEmpty()) {
                     heroList.addAll(allUniqueMedia.take(10))
+                } else {
+                    heroList.addAll(seedHeroMedia)
                 }
 
                 // Seed explore grid
